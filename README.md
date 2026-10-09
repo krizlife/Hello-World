@@ -11,7 +11,7 @@ A lean, cat-filled knitting companion. Find your next project, plan it day by da
 
 ## Run it
 
-It is a single `index.html` with no build step. Open it in a browser, or serve the folder:
+It is a single `index.html` (plus an icon and manifest for Home Screen installs) with no build step. Open it in a browser, or serve the folder:
 
 ```sh
 python3 -m http.server 8000
@@ -21,3 +21,11 @@ python3 -m http.server 8000
 To host it for free, enable GitHub Pages for this repository (Settings → Pages → deploy from branch).
 
 Projects are saved in the browser's local storage and photos in IndexedDB, so data stays on the device you use. The first launch adds a few example projects marked "Example"; delete them whenever you like.
+
+## Full screen on iPad or iPhone
+
+1. Host it with GitHub Pages (see above) and open the Pages link in Safari.
+2. Tap Share → **Add to Home Screen**.
+3. Open Purl & Paws from the Home Screen icon. It runs full screen without the Safari toolbar.
+
+On tablets and desktops the layout widens to fill the screen, with project pages split into two columns.

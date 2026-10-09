@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#FFD23F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Purl &amp; Paws">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Purl &amp; Paws</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -296,6 +302,76 @@ textarea.input { min-height: 84px; resize: vertical; }
 @keyframes toastIn { from { transform: translate(-50%, 16px); opacity: 0; } }
 .tail { transform-origin: 20px 60px; animation: swish 3.2s ease-in-out infinite; }
 @keyframes swish { 50% { transform: rotate(-12deg); } }
+
+/* ---------- project detail columns ---------- */
+.pdetail, .pcol { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+/* ---------- tablet and desktop: use the whole screen ---------- */
+@media (min-width: 760px) {
+  body { font-size: 16px; padding-inline: 28px; }
+  .app { max-width: 1100px; padding-block: 22px 130px; }
+  .top { padding-block: 6px 34px; }
+  .wordmark { font-size: 32px; }
+  .brand svg { width: 46px; height: 46px; }
+  .today-tag { font-size: 13px; }
+  .view { gap: 28px; }
+  .view-title h1 { font-size: 48px; }
+  .perch { width: 132px; top: -45px; right: 36px; }
+
+  .pick { grid-template-columns: 220px minmax(0, 1fr); gap: 28px; padding: 26px; }
+  .pick-body h2 { font-size: 36px; }
+  .pick-body p { font-size: 16px; }
+  .pick-actions { grid-column: 2; }
+  .pick-actions .btn { flex: 0 1 200px; }
+  .filter { font-size: 15px; padding: 9px 18px; }
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .pat-body { padding: 14px 16px 16px; }
+  .pat-body h3 { font-size: 20px; }
+  .pat-meta { font-size: 12.5px; }
+
+  .summary { padding: 24px 26px; }
+  .summary b { font-size: 46px; }
+  .summary span { font-size: 14px; }
+  .plist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .pcard { grid-template-columns: 84px minmax(0, 1fr) auto; padding: 18px; }
+  .pc-art { width: 84px; height: 84px; }
+  .pc-top h3 { font-size: 21px; }
+  .pc-next { font-size: 14px; }
+  .pc-pct { font-size: 28px; }
+
+  .pdetail { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .phead { padding: 24px; }
+  .ph-title h1 { font-size: 40px; }
+  .ring { width: 120px; height: 120px; }
+  .ring b { font-size: 30px; }
+  .facts dd { font-size: 20px; }
+  .block-h h2 { font-size: 26px; }
+  .cell { font-size: 14px; border-radius: 12px; }
+  .cal { padding: 18px; gap: 8px; }
+  .cal-row { gap: 8px; grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
+  .t-name { font-size: 16px; }
+  .day { padding: 14px 18px; }
+  .day-h h3 { font-size: 18px; }
+
+  .shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .frame h3 { font-size: 19px; }
+
+  .tabs { padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .tabs-in { max-width: 480px; }
+  .tab { min-height: 52px; font-size: 15px; }
+  .toast { bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
+
+  .sheet { align-items: center; top: 0; padding: 24px; }
+  .sheet-in { max-width: 640px; max-height: 88vh; max-height: 88dvh; border-bottom: 2px solid var(--ink); border-radius: 26px; box-shadow: 6px 6px 0 var(--ink); padding: 14px 28px 28px; }
+  .grab { display: none; }
+  .sheet-hero { aspect-ratio: auto; height: 240px; }
+  .sheet-hero:has(img) { height: auto; max-height: 60vh; }
+  .sheet h2 { font-size: 34px; }
+}
+@media (min-width: 1100px) {
+  .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 
 @media (max-width: 380px) {
   .grid, .shelf { gap: 10px; }
@@ -768,6 +844,7 @@ function viewProject(p) {
   const endIso = p.days[p.days.length - 1];
   return `
     <button class="back" data-act="back">${ICON.back} ${isDone ? "Archive" : "All projects"}</button>
+    <div class="pdetail"><div class="pcol">
     <section class="card phead">
       <div class="perch">${CAT_PEEK}</div>
       <div class="ph-row">
@@ -789,12 +866,14 @@ function viewProject(p) {
       ${calendar(p)}
     </section>
     <section class="block"><div class="block-h"><h2>Steps</h2><span class="eyebrow">${pt.steps.length} steps</span></div><div class="steps">${stepRows}</div></section>
+    </div><div class="pcol">
     <section class="block"><div class="block-h"><h2>Day by day</h2><span class="eyebrow">${p.weeks} week${p.weeks > 1 ? "s" : ""}</span></div><div class="days">${!isDone && pastDone ? `<button class="link-btn" data-act="past" style="align-self:flex-start">${S.showPast ? "Hide" : "Show"} ${pastDone} finished session${pastDone > 1 ? "s" : ""}</button>` : ""}${days}</div></section>
     <section class="actions">
       ${isDone ? "" : `<button class="btn ${s.pct > 0.999 ? "btn-cobalt" : "btn-ink"} btn-block" data-act="finish">${ICON.camera} ${s.pct > 0.999 ? "Bind off, take a photo and archive" : "Finish early and archive"}</button>`}
       ${S.confirmDelete ? `<div class="confirm"><p>Delete "${esc(p.name)}" and its progress? This cannot be undone.</p><div><button class="btn btn-danger" data-act="delete-yes">Delete project</button><button class="btn" data-act="delete-no">Keep it</button></div></div>`
         : `<button class="btn btn-ghost" data-act="delete" style="align-self:center">Delete project</button>`}
-    </section>`;
+    </section>
+    </div></div>`;
 }
 
 /* ---------- archive ---------- */
