@@ -1,0 +1,707 @@
+<title>DCF Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one calm column of white space; valuation verdict on top, assumptions left, editable curves right, ledger and sensitivities below. */
+:root {
+  --bg: #FAFAF8;
+  --surface: #FFFFFF;
+  --ink: #0E0F11;
+  --muted: #6C6F75;
+  --faint: #A3A6AB;
+  --rule: #E4E4E0;
+  --grid: #EEEEEA;
+  --accent: #1F3FD1;
+  --accent-soft: rgba(31, 63, 209, 0.10);
+  --neg: #B4372A;
+  --display: "Schibsted Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --body: "Schibsted Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C0D0F; --surface: #131417; --ink: #F1F1EE; --muted: #9A9DA3; --faint: #62656B;
+    --rule: #26282C; --grid: #1C1E21; --accent: #7F98FF; --accent-soft: rgba(127, 152, 255, 0.14); --neg: #F0806F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C0D0F; --surface: #131417; --ink: #F1F1EE; --muted: #9A9DA3; --faint: #62656B;
+  --rule: #26282C; --grid: #1C1E21; --accent: #7F98FF; --accent-soft: rgba(127, 152, 255, 0.14); --neg: #F0806F;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 32px; padding-block: 40px 80px; display: flex; flex-direction: column; gap: 56px; }
+@media (max-width: 640px) { .wrap { padding-inline: 16px; padding-block: 24px 56px; gap: 40px; } }
+
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+h2 { font-family: var(--display); font-weight: 500; font-size: 22px; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--ink); margin-bottom: 24px; }
+.section-head p { margin: 0; color: var(--muted); font-size: 13px; }
+
+/* Header */
+header { display: flex; flex-direction: column; gap: 28px; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.brand { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-weight: 400; }
+.btn { font: 500 13px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 7px 16px; cursor: pointer; }
+.btn:hover { border-color: var(--ink); }
+.btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.name-input { font-family: var(--display); font-weight: 500; font-size: clamp(40px, 7vw, 76px); letter-spacing: -0.035em; line-height: 1; color: var(--ink); background: transparent; border: 0; padding: 0; width: 100%; min-width: 0; }
+.name-input:focus { outline: none; }
+.name-row { display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--rule); padding-bottom: 28px; }
+.name-row .hint { color: var(--muted); font-size: 13px; }
+
+.basics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; border-bottom: 1px solid var(--rule); }
+.basics label { display: flex; flex-direction: column; gap: 6px; padding: 4px 16px 20px; border-left: 1px solid var(--rule); min-width: 0; }
+.basics label:first-child { border-left: 0; padding-left: 0; }
+.basics input, .basics select { font: 500 20px var(--body); font-variant-numeric: tabular-nums; color: var(--ink); background: transparent; border: 0; border-bottom: 1px dashed transparent; padding: 0; width: 100%; min-width: 0; }
+.basics input:hover { border-bottom-color: var(--faint); }
+.basics .unit { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+@media (max-width: 900px) {
+  .basics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .basics label:nth-child(4) { border-left: 0; padding-left: 0; }
+}
+@media (max-width: 480px) {
+  .basics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .basics label { border-left: 0; padding-left: 0; }
+  .basics label:nth-child(even) { border-left: 1px solid var(--rule); padding-left: 16px; }
+}
+
+/* Verdict */
+.verdict { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border: 1px solid var(--rule); background: var(--surface); }
+.method { padding: 28px 32px 32px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.method + .method { border-left: 1px solid var(--rule); }
+@media (max-width: 820px) { .verdict { grid-template-columns: 1fr; } .method + .method { border-left: 0; border-top: 1px solid var(--rule); } .method { padding: 24px 20px; } }
+.method-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.method-head h3 { margin: 4px 0 0; font: 500 17px var(--display); letter-spacing: -0.01em; }
+.price { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.price .big { font-family: var(--display); font-weight: 500; font-size: clamp(44px, 6vw, 64px); letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.price .per { color: var(--muted); font-size: 13px; }
+.keyfig { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.keyfig .v { font: 500 22px var(--display); letter-spacing: -0.02em; color: var(--accent); font-variant-numeric: tabular-nums; }
+.mult-input { display: flex; align-items: baseline; gap: 2px; border-bottom: 1px solid var(--accent); }
+.mult-input input { font: 500 22px var(--display); color: var(--accent); background: transparent; border: 0; width: 3.4em; text-align: right; padding: 0; font-variant-numeric: tabular-nums; }
+.mult-input span { font: 500 22px var(--display); color: var(--accent); }
+
+.tvbar { display: flex; flex-direction: column; gap: 8px; }
+.tvbar .track { height: 6px; display: flex; background: var(--grid); }
+.tvbar .pv { background: var(--ink); }
+.tvbar .tv { background: var(--accent); }
+.tvbar .legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); gap: 12px; flex-wrap: wrap; }
+.tvbar .legend i { display: inline-block; width: 8px; height: 8px; margin-right: 6px; vertical-align: 0; }
+
+dl.bridge { margin: 0; display: grid; grid-template-columns: 1fr auto; row-gap: 0; }
+dl.bridge dt, dl.bridge dd { margin: 0; padding: 9px 0; border-top: 1px solid var(--rule); font-size: 14px; }
+dl.bridge dt { color: var(--muted); }
+dl.bridge dd { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+dl.bridge .strong { color: var(--ink); font-weight: 500; border-top-color: var(--ink); }
+
+.gap-note { font-size: 13px; color: var(--muted); margin-top: 14px; }
+.gap-note b { color: var(--ink); font-weight: 500; }
+
+/* Workbench */
+.bench { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 48px; align-items: start; }
+@media (max-width: 960px) { .bench { grid-template-columns: 1fr; gap: 40px; } }
+.panel { display: flex; flex-direction: column; gap: 32px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+@media (max-width: 960px) { .panel { position: static; } }
+.group { display: flex; flex-direction: column; gap: 18px; }
+.group > .eyebrow { padding-bottom: 8px; border-bottom: 1px solid var(--rule); }
+.ctl { display: flex; flex-direction: column; gap: 8px; }
+.ctl-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ctl-top label { font-size: 14px; }
+.ctl-top .val { display: flex; align-items: baseline; gap: 2px; }
+.ctl-top .val input { font: 500 14px var(--mono); color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--rule); width: 4.2em; text-align: right; padding: 0 0 1px; }
+.ctl-top .val input:hover { border-bottom-color: var(--faint); }
+.ctl-top .val span { font: 500 13px var(--mono); color: var(--muted); }
+.ctl .sub { font-size: 12px; color: var(--faint); margin-top: -2px; }
+
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; background: transparent; margin: 0; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 2px; background: linear-gradient(to right, var(--ink) 0 var(--p, 50%), var(--rule) var(--p, 50%) 100%); }
+input[type=range]::-moz-range-track { height: 2px; background: linear-gradient(to right, var(--ink) 0 var(--p, 50%), var(--rule) var(--p, 50%) 100%); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--bg); border: 2px solid var(--ink); margin-top: -6px; transition: transform .12s; }
+input[type=range]::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: var(--bg); border: 2px solid var(--ink); }
+input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.15); }
+input[type=range]:focus-visible { outline: none; }
+input[type=range]:focus-visible::-webkit-slider-thumb { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+
+.charts { display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+.chart { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.chart-head h3 { margin: 0; font: 500 17px var(--display); letter-spacing: -0.01em; }
+.chart-head .tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { font: 500 12px var(--body); color: var(--muted); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.chip:hover { color: var(--ink); border-color: var(--ink); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart svg.editable { touch-action: none; cursor: ns-resize; user-select: none; -webkit-user-select: none; }
+.chart .foot { font-size: 12px; color: var(--faint); }
+svg text { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+svg .tick-zero { stroke: var(--faint); }
+svg .gridline { stroke: var(--grid); }
+svg .val-label { fill: var(--ink); font-weight: 500; }
+svg .handle { fill: var(--surface); stroke: var(--accent); stroke-width: 2; transition: r .12s; }
+svg .handle:focus { outline: none; }
+svg .handle:focus-visible, svg .handle.active { stroke-width: 3; fill: var(--accent); }
+svg .base-dot { fill: var(--surface); stroke: var(--faint); stroke-width: 1.5; }
+
+/* Ledger */
+.table-wrap { overflow-x: auto; border-top: 1px solid var(--ink); }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 12px; text-align: right; white-space: nowrap; font-size: 14px; border-bottom: 1px solid var(--rule); }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+thead th { font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 14px; }
+thead th.hist { color: var(--faint); }
+td.hist { color: var(--muted); }
+tr.pct td { color: var(--muted); font-size: 12px; padding-top: 0; border-bottom-color: transparent; }
+tr.pct td:first-child { padding-left: 12px; }
+tr.total td { font-weight: 500; border-top: 1px solid var(--ink); }
+tr.key td { color: var(--accent); font-weight: 500; }
+.neg { color: var(--neg); }
+
+/* Sensitivity */
+.sens { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px; }
+@media (max-width: 900px) { .sens { grid-template-columns: 1fr; } }
+.sens > div { min-width: 0; }
+.sens h3 { margin: 0 0 4px; font: 500 17px var(--display); }
+.sens .cap { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
+.sens .table-wrap { border-top: 0; }
+.sens table { min-width: 420px; }
+.sens th, .sens td { text-align: center; padding: 10px 6px; }
+.sens thead th { border-bottom: 1px solid var(--ink); }
+.sens tbody th { text-align: left; font: 500 12px var(--mono); color: var(--muted); padding-left: 0; }
+.sens td.c { outline: 1.5px solid var(--ink); outline-offset: -1.5px; font-weight: 600; }
+.sens .axis { font: 500 10px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+
+footer { color: var(--faint); font-size: 12px; border-top: 1px solid var(--rule); padding-top: 16px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="top">
+      <div class="brand">DCF Workbench <span>/ DCF and EV/EBITDA</span></div>
+      <button class="btn" id="reset" type="button">Reset to example</button>
+    </div>
+    <div class="name-row">
+      <span class="eyebrow">Company</span>
+      <input class="name-input" id="name" aria-label="Company name" spellcheck="false">
+      <span class="hint">Example figures loaded. Edit any number, drag the curves, or move the sliders. Your inputs are kept in this browser.</span>
+    </div>
+    <div class="basics" id="basics"></div>
+  </header>
+
+  <section aria-labelledby="val-h">
+    <div class="section-head">
+      <h2 id="val-h">Valuation</h2>
+      <p id="units-note"></p>
+    </div>
+    <div class="verdict">
+      <article class="method">
+        <div class="method-head">
+          <div><span class="eyebrow">Method 01</span><h3>DCF, perpetuity growth</h3></div>
+          <div class="keyfig"><span class="eyebrow">Implied exit multiple</span><span class="v" id="g-implied"></span></div>
+        </div>
+        <div class="price"><span class="big" id="g-price"></span><span class="per" id="g-per"></span></div>
+        <div class="tvbar" id="g-tvbar"></div>
+        <dl class="bridge" id="g-bridge"></dl>
+      </article>
+      <article class="method">
+        <div class="method-head">
+          <div><span class="eyebrow">Method 02</span><h3>DCF, exit EV/EBITDA multiple</h3></div>
+          <div class="keyfig">
+            <label class="eyebrow" for="mult-hero">Exit multiple (FY+5 EBITDA)</label>
+            <div class="mult-input"><input id="mult-hero" type="number" step="0.1" min="0" inputmode="decimal"><span>x</span></div>
+          </div>
+        </div>
+        <div class="price"><span class="big" id="m-price"></span><span class="per" id="m-per"></span></div>
+        <div class="tvbar" id="m-tvbar"></div>
+        <dl class="bridge" id="m-bridge"></dl>
+      </article>
+    </div>
+    <p class="gap-note" id="gap-note"></p>
+  </section>
+
+  <section aria-labelledby="as-h">
+    <div class="section-head">
+      <h2 id="as-h">Assumptions</h2>
+      <p>Drag points on the curves. Hold Shift to move the whole curve. Arrow keys work on a focused point.</p>
+    </div>
+    <div class="bench">
+      <aside class="panel" id="panel"></aside>
+      <div class="charts">
+        <div class="chart" id="chart-growth">
+          <div class="chart-head">
+            <h3>Revenue growth</h3>
+            <div class="tools">
+              <button class="chip" type="button" data-shape="growth:fade">Fade to terminal growth</button>
+              <button class="chip" type="button" data-shape="growth:flat">Hold FY+1 flat</button>
+            </div>
+          </div>
+        </div>
+        <div class="chart" id="chart-margin">
+          <div class="chart-head">
+            <h3>EBITDA margin</h3>
+            <div class="tools">
+              <button class="chip" type="button" data-shape="margin:ramp">Linear ramp to FY+5</button>
+              <button class="chip" type="button" data-shape="margin:flat">Hold base margin</button>
+            </div>
+          </div>
+        </div>
+        <div class="chart" id="chart-fcf">
+          <div class="chart-head"><h3>Unlevered free cash flow</h3></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="fc-h">
+    <div class="section-head">
+      <h2 id="fc-h">Forecast</h2>
+      <p id="fc-note"></p>
+    </div>
+    <div class="table-wrap"><table id="ledger"></table></div>
+  </section>
+
+  <section aria-labelledby="se-h">
+    <div class="section-head">
+      <h2 id="se-h">Sensitivity</h2>
+      <p>Value per share. Outlined cell is the current case.</p>
+    </div>
+    <div class="sens">
+      <div>
+        <h3>WACC vs terminal growth</h3>
+        <p class="cap">Perpetuity growth method</p>
+        <div class="table-wrap"><table id="sens-g"></table></div>
+      </div>
+      <div>
+        <h3>WACC vs exit multiple</h3>
+        <p class="cap">Exit multiple method</p>
+        <div class="table-wrap"><table id="sens-m"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Unlevered FCF = EBIT × (1 − tax) + D&amp;A − capex − ΔNWC. Year-end discounting.</span>
+    <span>Illustrative tool. Not investment advice.</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const STORE = 'dcf-workbench-v1';
+  const BASE_YEAR = 2025;
+  const DEFAULT = {
+    name: 'Example Co.', ccy: 'EUR', rev0: 2400, g0: 0.072, m0: 0.19, netDebt: 1100, shares: 180,
+    growth: [0.08, 0.075, 0.065, 0.055, 0.045],
+    margin: [0.195, 0.205, 0.215, 0.22, 0.225],
+    wacc: 0.085, tgr: 0.02, mult: 11, tax: 0.22, da: 0.04, capex: 0.045, nwc: 0.10
+  };
+  const clone = o => JSON.parse(JSON.stringify(o));
+  let S = clone(DEFAULT);
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (saved && Array.isArray(saved.growth) && saved.growth.length === 5) S = Object.assign(clone(DEFAULT), saved);
+  } catch (e) {}
+  let saveTimer;
+  const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) {} }, 250); };
+
+  const $ = id => document.getElementById(id);
+  const years = ['FY' + String(BASE_YEAR).slice(2) + 'A'].concat([1,2,3,4,5].map(i => 'FY' + String(BASE_YEAR + i).slice(2) + 'E'));
+  const SYM = { EUR: '€', USD: '$', GBP: '£', SEK: 'SEK ', NOK: 'NOK ', DKK: 'DKK ', CHF: 'CHF ' };
+
+  // ---------- Formatting (accounting style: negatives in parentheses)
+  const fmt = (n, d = 0) => {
+    if (!isFinite(n)) return 'n/a';
+    const s = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+    return n < 0 ? '(' + s + ')' : s;
+  };
+  const pct = (n, d = 1) => isFinite(n) ? (n < 0 ? '(' + (Math.abs(n) * 100).toFixed(d) + '%)' : (n * 100).toFixed(d) + '%') : 'n/a';
+  const mx = n => isFinite(n) ? n.toFixed(1) + 'x' : 'n/a';
+  const money = (n, d = 2) => isFinite(n) ? (n < 0 ? '(' : '') + (SYM[S.ccy] || '') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) + (n < 0 ? ')' : '') : 'n/a';
+
+  // ---------- Model
+  function model(o = {}) {
+    const wacc = o.wacc ?? S.wacc, tgr = o.tgr ?? S.tgr, mult = o.mult ?? S.mult;
+    const rows = [];
+    let rev = S.rev0, pvSum = 0;
+    for (let i = 0; i < 5; i++) {
+      const prev = rev;
+      rev = prev * (1 + S.growth[i]);
+      const ebitda = rev * S.margin[i];
+      const da = rev * S.da;
+      const ebit = ebitda - da;
+      const tax = Math.max(0, ebit) * S.tax;
+      const capex = rev * S.capex;
+      const dnwc = (rev - prev) * S.nwc;
+      const fcf = ebit - tax + da - capex - dnwc;
+      const df = 1 / Math.pow(1 + wacc, i + 1);
+      const pv = fcf * df;
+      pvSum += pv;
+      rows.push({ rev, g: S.growth[i], ebitda, m: S.margin[i], da, ebit, tax, capex, dnwc, fcf, df, pv });
+    }
+    const last = rows[4];
+    const ebitda0 = S.rev0 * S.m0, ebitda1 = rows[0].ebitda;
+    const tvG = wacc > tgr ? last.fcf * (1 + tgr) / (wacc - tgr) : NaN;
+    const tvM = mult * last.ebitda;
+    const pack = (tv) => {
+      const pvTv = tv * last.df, ev = pvSum + pvTv, eq = ev - S.netDebt;
+      return { tv, pvTv, ev, eq, px: eq / S.shares, tvShare: pvTv / ev, evLtm: ev / ebitda0, evNtm: ev / ebitda1 };
+    };
+    const G = pack(tvG), M = pack(tvM);
+    G.impliedMult = tvG / last.ebitda;
+    M.impliedG = (tvM * wacc - last.fcf) / (tvM + last.fcf);
+    return { rows, pvSum, G, M };
+  }
+
+  // ---------- Basics (company inputs)
+  const BASICS = [
+    { key: 'ccy', label: 'Currency', type: 'select', opts: Object.keys(SYM) },
+    { key: 'rev0', label: 'Revenue ' + years[0], unit: 'm' },
+    { key: 'g0', label: 'Growth ' + years[0], unit: '%', pct: true },
+    { key: 'm0', label: 'EBITDA margin ' + years[0], unit: '%', pct: true },
+    { key: 'netDebt', label: 'Net debt', unit: 'm' },
+    { key: 'shares', label: 'Shares outstanding', unit: 'm' }
+  ];
+  const basicsEl = $('basics');
+  BASICS.forEach(b => {
+    const lab = document.createElement('label');
+    const id = 'b-' + b.key;
+    lab.setAttribute('for', id);
+    lab.innerHTML = `<span class="eyebrow">${b.label}</span>` +
+      (b.type === 'select'
+        ? `<select id="${id}">${b.opts.map(c => `<option>${c}</option>`).join('')}</select>`
+        : `<input id="${id}" type="number" step="any" inputmode="decimal">`) +
+      `<span class="unit">${b.type === 'select' ? 'Reporting' : b.unit === '%' ? 'percent' : 'millions'}</span>`;
+    basicsEl.appendChild(lab);
+    const inp = lab.querySelector('input, select');
+    inp.addEventListener('input', () => {
+      if (b.type === 'select') S[b.key] = inp.value;
+      else {
+        const v = parseFloat(inp.value);
+        if (!isFinite(v) || (b.key === 'shares' && v <= 0)) return;
+        S[b.key] = b.pct ? v / 100 : v;
+      }
+      update();
+    });
+  });
+  $('name').addEventListener('input', e => { S.name = e.target.value; save(); });
+
+  // ---------- Slider panel
+  const GROUPS = [
+    { title: 'Discounting', items: [
+      { key: 'wacc', label: 'WACC', min: 4, max: 16, step: 0.1, unit: '%', pct: true },
+      { key: 'tgr', label: 'Terminal growth', min: -1, max: 5, step: 0.1, unit: '%', pct: true, sub: 'Perpetuity growth method' }
+    ]},
+    { title: 'Exit', items: [
+      { key: 'mult', label: 'Exit EV/EBITDA', min: 3, max: 25, step: 0.1, unit: 'x', sub: 'Applied to FY+5 EBITDA' }
+    ]},
+    { title: 'Cash conversion', items: [
+      { key: 'tax', label: 'Tax rate', min: 0, max: 40, step: 0.5, unit: '%', pct: true },
+      { key: 'da', label: 'D&A', min: 0, max: 15, step: 0.1, unit: '%', pct: true, sub: '% of revenue' },
+      { key: 'capex', label: 'Capex', min: 0, max: 20, step: 0.1, unit: '%', pct: true, sub: '% of revenue' },
+      { key: 'nwc', label: 'Net working capital', min: 0, max: 40, step: 0.5, unit: '%', pct: true, sub: '% of revenue increase' }
+    ]}
+  ];
+  const sliders = [];
+  const panel = $('panel');
+  GROUPS.forEach(g => {
+    const grp = document.createElement('div');
+    grp.className = 'group';
+    grp.innerHTML = `<span class="eyebrow">${g.title}</span>`;
+    g.items.forEach(it => {
+      const c = document.createElement('div');
+      c.className = 'ctl';
+      c.innerHTML = `<div class="ctl-top"><label for="r-${it.key}">${it.label}</label>
+        <span class="val"><input id="n-${it.key}" type="number" step="${it.step}" aria-label="${it.label} value" inputmode="decimal"><span>${it.unit}</span></span></div>
+        <input type="range" id="r-${it.key}" min="${it.min}" max="${it.max}" step="${it.step}">
+        ${it.sub ? `<span class="sub">${it.sub}</span>` : ''}`;
+      grp.appendChild(c);
+      const r = c.querySelector('input[type=range]'), n = c.querySelector('input[type=number]');
+      const set = v => { if (!isFinite(v)) return; S[it.key] = it.pct ? v / 100 : v; update(); };
+      r.addEventListener('input', () => set(parseFloat(r.value)));
+      n.addEventListener('input', () => set(parseFloat(n.value)));
+      sliders.push({ it, r, n });
+    });
+    panel.appendChild(grp);
+  });
+  $('mult-hero').addEventListener('input', e => { const v = parseFloat(e.target.value); if (isFinite(v)) { S.mult = v; update(); } });
+
+  // ---------- Editable line chart
+  const NS = 'http://www.w3.org/2000/svg';
+  const mk = (tag, attrs = {}, parent) => { const el = document.createElementNS(NS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); if (parent) parent.appendChild(el); return el; };
+  const W = 640, H = 260, P = { l: 48, r: 16, t: 30, b: 30 };
+  const PW = W - P.l - P.r, PH = H - P.t - P.b;
+  const xAt = i => P.l + (i + 0.5) * (PW / 6);
+
+  function editableChart(host, cfg) {
+    const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, class: 'editable', role: 'group', 'aria-label': cfg.title + ' chart, drag points to edit' });
+    host.appendChild(svg);
+    const foot = document.createElement('div'); foot.className = 'foot'; foot.textContent = cfg.foot; host.appendChild(foot);
+    const [lo, hi] = cfg.domain;
+    const y = v => P.t + (hi - v) / (hi - lo) * PH;
+    const vAt = py => hi - (py - P.t) / PH * (hi - lo);
+    const gGrid = mk('g', {}, svg);
+    for (let t = lo; t <= hi + 1e-9; t += cfg.tick) {
+      const yy = y(t);
+      mk('line', { x1: P.l, x2: W - P.r, y1: yy, y2: yy, class: Math.abs(t) < 1e-9 ? 'tick-zero' : 'gridline' }, gGrid);
+      mk('text', { x: P.l - 10, y: yy + 4, 'text-anchor': 'end' }, gGrid).textContent = Math.round(t * 100) + '%';
+    }
+    years.forEach((yr, i) => { mk('text', { x: xAt(i), y: H - 8, 'text-anchor': 'middle' }, gGrid).textContent = yr; });
+    const area = mk('path', { fill: 'var(--accent-soft)', stroke: 'none' }, svg);
+    const ref = mk('line', { stroke: 'var(--faint)', 'stroke-dasharray': '2 4', 'stroke-width': 1 }, svg);
+    const refLabel = mk('text', { 'text-anchor': 'start' }, svg);
+    const baseSeg = mk('line', { stroke: 'var(--faint)', 'stroke-width': 1.5, 'stroke-dasharray': '3 3' }, svg);
+    const line = mk('polyline', { fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+    const baseDot = mk('circle', { r: 4, class: 'base-dot' }, svg);
+    const labels = [], handles = [];
+    const baseLabel = mk('text', { 'text-anchor': 'middle' }, svg);
+    for (let i = 0; i < 5; i++) {
+      labels.push(mk('text', { 'text-anchor': 'middle', class: 'val-label' }, svg));
+      const h = mk('circle', { r: 6, class: 'handle', tabindex: 0, role: 'slider', 'aria-label': cfg.title + ' ' + years[i + 1] }, svg);
+      h.addEventListener('keydown', e => {
+        const d = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+        if (!d) return;
+        e.preventDefault();
+        setVal(i, S[cfg.key][i] + d * (e.shiftKey ? 0.01 : cfg.step));
+        update();
+      });
+      handles.push(h);
+    }
+    const snap = v => Math.min(hi, Math.max(lo, Math.round(v / cfg.step) * cfg.step));
+    const setVal = (i, v) => { S[cfg.key][i] = +snap(v).toFixed(6); };
+
+    const toSvg = e => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); };
+    let drag = null;
+    svg.addEventListener('pointerdown', e => {
+      const p = toSvg(e);
+      let i = 0, best = Infinity;
+      for (let k = 0; k < 5; k++) { const d = Math.abs(xAt(k + 1) - p.x); if (d < best) { best = d; i = k; } }
+      if (p.x < xAt(0) + (xAt(1) - xAt(0)) / 2) return; // base year column is fixed
+      e.preventDefault();
+      svg.setPointerCapture(e.pointerId);
+      drag = { i, all: e.shiftKey, y0: p.y, start: S[cfg.key].slice() };
+      handles[i].classList.add('active');
+      handles[i].focus({ preventScroll: true });
+      if (!drag.all) { setVal(i, vAt(p.y)); update(); }
+    });
+    svg.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const p = toSvg(e);
+      if (drag.all) { const dv = vAt(p.y) - vAt(drag.y0); drag.start.forEach((v, k) => setVal(k, v + dv)); }
+      else setVal(drag.i, vAt(p.y));
+      update();
+    });
+    const end = () => { if (drag) handles[drag.i].classList.remove('active'); drag = null; };
+    svg.addEventListener('pointerup', end);
+    svg.addEventListener('pointercancel', end);
+
+    return function render() {
+      const vals = S[cfg.key], base = S[cfg.baseKey];
+      const pts = vals.map((v, i) => [xAt(i + 1), y(Math.min(hi, Math.max(lo, v)))]);
+      const yb = y(Math.min(hi, Math.max(lo, base)));
+      line.setAttribute('points', pts.map(p => p.join(',')).join(' '));
+      const floor = y(Math.max(lo, 0));
+      area.setAttribute('d', `M${pts[0][0]},${floor} ` + pts.map(p => 'L' + p.join(',')).join(' ') + ` L${pts[4][0]},${floor} Z`);
+      baseSeg.setAttribute('x1', xAt(0)); baseSeg.setAttribute('y1', yb); baseSeg.setAttribute('x2', pts[0][0]); baseSeg.setAttribute('y2', pts[0][1]);
+      baseDot.setAttribute('cx', xAt(0)); baseDot.setAttribute('cy', yb);
+      baseLabel.setAttribute('x', xAt(0)); baseLabel.setAttribute('y', yb - 12); baseLabel.textContent = pct(base);
+      pts.forEach((p, i) => {
+        handles[i].setAttribute('cx', p[0]); handles[i].setAttribute('cy', p[1]);
+        handles[i].setAttribute('aria-valuenow', (vals[i] * 100).toFixed(1));
+        handles[i].setAttribute('aria-valuetext', pct(vals[i]));
+        labels[i].setAttribute('x', p[0]);
+        labels[i].setAttribute('y', p[1] < P.t + 18 ? p[1] + 22 : p[1] - 13);
+        labels[i].textContent = pct(vals[i]);
+      });
+      const r = cfg.ref && cfg.ref();
+      if (r) {
+        const yr = y(Math.min(hi, Math.max(lo, r.v)));
+        ref.setAttribute('x1', P.l); ref.setAttribute('x2', W - P.r); ref.setAttribute('y1', yr); ref.setAttribute('y2', yr);
+        refLabel.setAttribute('x', P.l + 6); refLabel.setAttribute('y', yr - 6); refLabel.textContent = r.label;
+      }
+    };
+  }
+
+  const renderGrowth = editableChart($('chart-growth'), {
+    key: 'growth', baseKey: 'g0', title: 'Revenue growth', domain: [-0.10, 0.30], tick: 0.05, step: 0.001,
+    foot: 'Year-on-year revenue growth. Dashed line marks the terminal growth rate.',
+    ref: () => ({ v: S.tgr, label: 'Terminal ' + pct(S.tgr) })
+  });
+  const renderMargin = editableChart($('chart-margin'), {
+    key: 'margin', baseKey: 'm0', title: 'EBITDA margin', domain: [0, 0.50], tick: 0.10, step: 0.001,
+    foot: 'EBITDA as a share of revenue. Dashed line marks the cash conversion floor (D&A plus capex).',
+    ref: () => ({ v: S.da + S.capex, label: 'D&A + capex ' + pct(S.da + S.capex) })
+  });
+
+  document.querySelectorAll('[data-shape]').forEach(b => b.addEventListener('click', () => {
+    const [key, shape] = b.dataset.shape.split(':');
+    const a = S[key];
+    if (key === 'growth' && shape === 'fade') { const s = a[0], e = S.tgr; for (let i = 1; i < 5; i++) a[i] = s + (e - s) * (i / 5); }
+    if (key === 'growth' && shape === 'flat') { for (let i = 1; i < 5; i++) a[i] = a[0]; }
+    if (key === 'margin' && shape === 'ramp') { const s = S.m0, e = a[4]; for (let i = 0; i < 4; i++) a[i] = s + (e - s) * ((i + 1) / 5); }
+    if (key === 'margin' && shape === 'flat') { for (let i = 0; i < 5; i++) a[i] = S.m0; }
+    for (let i = 0; i < 5; i++) a[i] = +(Math.round(a[i] * 1000) / 1000).toFixed(6);
+    update();
+  }));
+
+  // ---------- FCF bar chart (read-only)
+  const fcfHost = $('chart-fcf');
+  const fsvg = mk('svg', { viewBox: `0 0 ${W} 220`, role: 'img', 'aria-label': 'Unlevered free cash flow and present value by year' });
+  fcfHost.appendChild(fsvg);
+  const ffoot = document.createElement('div'); ffoot.className = 'foot';
+  ffoot.innerHTML = '<span style="display:inline-block;width:8px;height:8px;background:var(--ink);margin-right:6px"></span>Unlevered FCF &nbsp;&nbsp; <span style="display:inline-block;width:8px;height:8px;background:var(--accent);margin-right:6px"></span>Present value at WACC';
+  fcfHost.appendChild(ffoot);
+  function renderFcf(res) {
+    fsvg.innerHTML = '';
+    const FH = 220, ft = 26, fb = 30, fph = FH - ft - fb;
+    const vals = res.rows.flatMap(r => [r.fcf, r.pv]);
+    let mxv = Math.max(0, ...vals), mnv = Math.min(0, ...vals);
+    const span = (mxv - mnv) || 1;
+    const rawStep = span / 4, mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= rawStep);
+    mxv = Math.ceil(mxv / step) * step; mnv = Math.floor(mnv / step) * step;
+    const fy = v => ft + (mxv - v) / (mxv - mnv) * fph;
+    for (let t = mnv; t <= mxv + 1e-9; t += step) {
+      mk('line', { x1: P.l, x2: W - P.r, y1: fy(t), y2: fy(t), class: Math.abs(t) < 1e-9 ? 'tick-zero' : 'gridline' }, fsvg);
+      mk('text', { x: P.l - 10, y: fy(t) + 4, 'text-anchor': 'end' }, fsvg).textContent = fmt(t);
+    }
+    const bw = Math.min(28, PW / 6 / 3.2);
+    years.forEach((yr, i) => mk('text', { x: xAt(i), y: FH - 8, 'text-anchor': 'middle' }, fsvg).textContent = yr);
+    res.rows.forEach((r, i) => {
+      const cx = xAt(i + 1);
+      [[r.fcf, 'var(--ink)', -bw - 1], [r.pv, 'var(--accent)', 1]].forEach(([v, c, off]) => {
+        const y0 = fy(Math.max(0, v)), h = Math.abs(fy(v) - fy(0));
+        mk('rect', { x: cx + off, y: y0, width: bw, height: Math.max(h, 0.5), fill: c }, fsvg);
+      });
+      const top = fy(Math.max(r.fcf, r.pv, 0));
+      mk('text', { x: cx, y: top - 8, 'text-anchor': 'middle', class: 'val-label' }, fsvg).textContent = fmt(r.fcf);
+    });
+  }
+
+  // ---------- Verdict cards
+  function tvbar(el, r, label) {
+    const share = Math.max(0, Math.min(1, r.tvShare));
+    el.innerHTML = `<div class="track"><div class="pv" style="width:${(1 - share) * 100}%"></div><div class="tv" style="width:${share * 100}%"></div></div>
+      <div class="legend"><span><i style="background:var(--ink)"></i>PV of forecast FCF ${pct(1 - r.tvShare, 0)}</span><span><i style="background:var(--accent)"></i>PV of terminal value ${pct(r.tvShare, 0)}</span></div>`;
+  }
+  function bridge(el, res, r, extra) {
+    el.innerHTML = [
+      ['PV of forecast FCF', fmt(res.pvSum)],
+      ['PV of terminal value', fmt(r.pvTv)],
+      ['Enterprise value', fmt(r.ev), 'strong'],
+      ['Less net debt', fmt(-S.netDebt)],
+      ['Equity value', fmt(r.eq), 'strong'],
+      ['EV / EBITDA ' + years[0] + ' (LTM)', mx(r.evLtm)],
+      ['EV / EBITDA ' + years[1] + ' (NTM)', mx(r.evNtm)],
+      extra
+    ].map(([k, v, c]) => `<dt class="${c || ''}">${k}</dt><dd class="${c || ''}">${v}</dd>`).join('');
+  }
+
+  // ---------- Ledger
+  function renderLedger(res) {
+    const R = res.rows, base = { rev: S.rev0, ebitda: S.rev0 * S.m0 };
+    const head = `<thead><tr><th>${S.ccy} m</th>${years.map((y, i) => `<th class="${i ? '' : 'hist'}">${y}</th>`).join('')}</tr></thead>`;
+    const cell = v => `<td class="${v < 0 ? 'neg' : ''}">${fmt(v)}</td>`;
+    const line = (label, fn, b = '', cls = '') => `<tr class="${cls}"><td>${label}</td><td class="hist">${b}</td>${R.map(r => fn(r)).join('')}</tr>`;
+    const body = [
+      line('Revenue', r => cell(r.rev), fmt(base.rev)),
+      line('Growth', r => `<td>${pct(r.g)}</td>`, pct(S.g0), 'pct'),
+      line('EBITDA', r => cell(r.ebitda), fmt(base.ebitda)),
+      line('Margin', r => `<td>${pct(r.m)}</td>`, pct(S.m0), 'pct'),
+      line('D&amp;A', r => cell(-r.da)),
+      line('EBIT', r => cell(r.ebit), '', 'total'),
+      line('Taxes on EBIT', r => cell(-r.tax)),
+      line('Capex', r => cell(-r.capex)),
+      line('Change in NWC', r => cell(-r.dnwc)),
+      line('Unlevered FCF', r => cell(r.fcf), '', 'total'),
+      line('FCF conversion', r => `<td>${pct(r.fcf / r.ebitda, 0)}</td>`, '', 'pct'),
+      line('Discount factor', r => `<td>${r.df.toFixed(3)}</td>`),
+      line('PV of FCF', r => cell(r.pv), '', 'key')
+    ].join('');
+    $('ledger').innerHTML = head + '<tbody>' + body + '</tbody>';
+  }
+
+  // ---------- Sensitivities
+  function renderSens(id, cols, colKey, colFmt, pick) {
+    const rows = [-0.01, -0.005, 0, 0.005, 0.01].map(d => S.wacc + d);
+    const base = pick(model());
+    let h = `<thead><tr><th class="axis">WACC</th>${cols.map(c => `<th>${colFmt(c)}</th>`).join('')}</tr></thead><tbody>`;
+    rows.forEach((w, ri) => {
+      h += `<tr><th>${pct(w)}</th>`;
+      cols.forEach((c, ci) => {
+        const v = pick(model({ wacc: w, [colKey]: c }));
+        const valid = isFinite(v) && !(colKey === 'tgr' && w <= c);
+        const rel = valid && base ? (v - base) / Math.abs(base) : 0;
+        const a = Math.min(0.32, Math.abs(rel) * 0.9);
+        const bg = !valid ? 'transparent' : rel >= 0 ? `color-mix(in srgb, var(--accent) ${a * 100}%, transparent)` : `color-mix(in srgb, var(--faint) ${a * 100}%, transparent)`;
+        h += `<td class="${ri === 2 && ci === 2 ? 'c' : ''} ${valid && v < 0 ? 'neg' : ''}" style="background:${bg}">${valid ? money(v) : 'n/a'}</td>`;
+      });
+      h += '</tr>';
+    });
+    $(id).innerHTML = h + '</tbody>';
+  }
+
+  // ---------- Update cycle
+  function syncInputs() {
+    const act = document.activeElement;
+    $('name').value !== S.name && act !== $('name') && ($('name').value = S.name);
+    BASICS.forEach(b => {
+      const el = $('b-' + b.key);
+      if (el === act) return;
+      el.value = b.type === 'select' ? S[b.key] : b.pct ? +(S[b.key] * 100).toFixed(2) : S[b.key];
+    });
+    sliders.forEach(({ it, r, n }) => {
+      const v = it.pct ? +(S[it.key] * 100).toFixed(2) : +S[it.key].toFixed(2);
+      if (r !== act) r.value = v;
+      if (n !== act) n.value = v.toFixed(1);
+      r.style.setProperty('--p', ((Math.min(it.max, Math.max(it.min, v)) - it.min) / (it.max - it.min) * 100) + '%');
+    });
+    if ($('mult-hero') !== act) $('mult-hero').value = S.mult.toFixed(1);
+  }
+
+  function update() {
+    const res = model();
+    syncInputs();
+    const unit = `${S.ccy} m unless stated. Per share in ${S.ccy}.`;
+    $('units-note').textContent = unit;
+    $('fc-note').textContent = `${S.ccy} m. ${years[0]} actual, ${years[1]} to ${years[5]} forecast.`;
+
+    $('g-price').textContent = money(res.G.px);
+    $('g-per').textContent = 'per share';
+    $('g-implied').textContent = mx(res.G.impliedMult);
+    tvbar($('g-tvbar'), res.G);
+    bridge($('g-bridge'), res, res.G, ['Terminal growth / WACC', pct(S.tgr) + ' / ' + pct(S.wacc)]);
+
+    $('m-price').textContent = money(res.M.px);
+    $('m-per').textContent = 'per share';
+    tvbar($('m-tvbar'), res.M);
+    bridge($('m-bridge'), res, res.M, ['Implied perpetuity growth', pct(res.M.impliedG)]);
+
+    const diff = (res.M.px - res.G.px) / Math.abs(res.G.px);
+    $('gap-note').innerHTML = isFinite(diff)
+      ? `The exit multiple case is <b>${pct(Math.abs(diff))} ${diff >= 0 ? 'above' : 'below'}</b> the perpetuity case. They agree at an exit multiple of <b>${mx(res.G.impliedMult)}</b>, or a terminal growth of <b>${pct(res.M.impliedG)}</b>.`
+      : 'Terminal growth must be below WACC for the perpetuity method.';
+
+    renderGrowth();
+    renderMargin();
+    renderFcf(res);
+    renderLedger(res);
+    const mults = [-2, -1, 0, 1, 2].map(d => S.mult + d);
+    const tgrs = [-0.01, -0.005, 0, 0.005, 0.01].map(d => S.tgr + d);
+    renderSens('sens-g', tgrs, 'tgr', v => pct(v), r => r.G.px);
+    renderSens('sens-m', mults, 'mult', mx, r => r.M.px);
+    save();
+  }
+
+  $('reset').addEventListener('click', () => { S = clone(DEFAULT); $('name').value = S.name; update(); });
+  $('name').value = S.name;
+  update();
+})();
+</script>
